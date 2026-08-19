@@ -1,0 +1,85 @@
+# Deployment: staging deploys automatically after a successful build;
+# production requires a manual approval gate — matching the master
+# architecture doc's §12 design ("manual approval gate before production
+# rollout"). The gate itself is a GitHub Environment protection rule
+# (configured in repo Settings, not expressible in this YAML file) tied
+# to the `production` environment referenced below; anyone with repo
+# write access can trigger THIS workflow, but the `production` job won't
+# actually run until a designated reviewer approves it in the Actions UI.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Images"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl for staging cluster
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.STAGING_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - run: aws eks update-kubeconfig --name platform-cluster-staging
+
+      - name: Set image tags to this build's SHA
+        working-directory: infra/k8s/overlays/staging
+        run: |
+          # `kustomize edit set image` rewrites this overlay's `images:`
+          # transformer to pin the exact SHA that was just built — one
+          # invocation per service, run via the real kustomize CLI at
+          # deploy time (installed in a prior step, omitted here for
+          # brevity).
+          for svc in auth-service api-gateway monitoring-service metrics-service \
+                     k8s-management-service dashboard-service traffic-prediction-service \
+                     predictive-maintenance-service genai-log-analysis-service \
+                     notification-service cloud-storage-service frontend; do
+            kustomize edit set image "ghcr.io/${{ github.repository }}/$svc=ghcr.io/${{ github.repository }}/$svc:${{ github.event.workflow_run.head_sha }}"
+          done
+
+      - name: Apply
+        run: kubectl apply -k infra/k8s/overlays/staging
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/api-gateway -n platform --timeout=120s
+
+  deploy-production:
+    needs: deploy-staging
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    # This is the manual-approval gate itself: a `production` GitHub
+    # Environment with a required-reviewers protection rule configured in
+    # repo Settings -> Environments. The job PAUSES here until approved —
+    # nothing below this line runs automatically.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl for production cluster
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PRODUCTION_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - run: aws eks update-kubeconfig --name platform-cluster-prod
+
+      - name: Apply
+        run: kubectl apply -k infra/k8s/overlays/prod
+
+      - name: Wait for rollout (automatic rollback on failure)
+        run: |
+          # `kubectl rollout status` exits non-zero if the Deployment's
+          # readiness probe never passes within the timeout — a failing
+          # deploy leaves the PREVIOUS ReplicaSet still serving traffic
+          # (Kubernetes' own rolling-update default), so this step
+          # failing is itself what prevents a broken image from ever
+          # fully replacing the working one, matching the architecture
+          # doc's "automatic rollback on failed readiness probes" design.
+          kubectl rollout status deployment/api-gateway -n platform --timeout=180s

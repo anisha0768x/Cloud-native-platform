@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-management-service-config
+  namespace: platform
+data:
+  SERVICE_NAME: "k8s-management-service"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8004"
+  JWT_PUBLIC_KEY_PATH: "/run/secrets/jwt/public_key.pem"

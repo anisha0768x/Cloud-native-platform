@@ -1,0 +1,6 @@
+-e ../../shared/libs/platform_common
+
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+boto3>=1.34

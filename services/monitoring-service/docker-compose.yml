@@ -1,0 +1,41 @@
+# Monitoring Service — local dev container.
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  monitoring-service:
+    build:
+      context: ../..
+      dockerfile: services/monitoring-service/Dockerfile
+    container_name: platform-monitoring-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: monitoring-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8002"
+      DATABASE_URL: postgresql+asyncpg://platform:platform_local_dev_only@postgres:5432/monitoring_service
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      CONSECUTIVE_FAILURES_BEFORE_DOWN: "3"
+      HEALTH_SUMMARY_WINDOW_SIZE: "100"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

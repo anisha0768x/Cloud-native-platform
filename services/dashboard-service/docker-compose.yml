@@ -1,0 +1,47 @@
+# Dashboard Service — local dev container. No database — Redis cache only.
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/dashboard-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  dashboard-service:
+    build:
+      context: ../..
+      dockerfile: services/dashboard-service/Dockerfile
+    container_name: platform-dashboard-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: dashboard-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8005"
+      REDIS_URL: redis://redis:6379/0
+      MONITORING_SERVICE_URL: http://monitoring-service:8002
+      K8S_MANAGEMENT_SERVICE_URL: http://k8s-management-service:8004
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      CACHE_TTL_SECONDS: "15"
+      BACKEND_CALL_TIMEOUT_SECONDS: "5.0"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8005:8005"
+    depends_on:
+      - redis
+      - monitoring-service
+      - k8s-management-service
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: genai-log-analysis-service
+  namespace: ai
+  labels:
+    app: genai-log-analysis-service
+spec:
+  selector:
+    app: genai-log-analysis-service
+  ports:
+    - port: 8008
+      targetPort: 8008
+  type: ClusterIP

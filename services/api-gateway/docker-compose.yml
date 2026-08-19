@@ -1,0 +1,43 @@
+# API Gateway — local dev container.
+#
+# Run from repo root, layering all three compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  api-gateway:
+    build:
+      context: ../..
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: platform-api-gateway
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: api-gateway
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8000"
+      REDIS_URL: redis://redis:6379/0
+      AUTH_SERVICE_URL: http://auth-service:8001
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      RATE_LIMIT_REQUESTS: "100"
+      RATE_LIMIT_WINDOW_SECONDS: "60"
+    volumes:
+      # Only the PUBLIC key — the gateway verifies tokens, it never issues
+      # them, so it has no business holding the private key at all.
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - auth-service
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

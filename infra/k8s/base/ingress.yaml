@@ -1,0 +1,58 @@
+# Two Ingress objects, not one — a Kubernetes Ingress resource can only
+# route to backend Services in ITS OWN namespace (a real constraint this
+# design initially got wrong; caught before generating manifests, not
+# after a failed deploy). The NGINX ingress controller merges path rules
+# for the same host across multiple Ingress objects, so splitting per
+# namespace here is both correct AND still gives one logical routing
+# table for platform.example.com.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: platform-ingress-api
+  namespace: platform
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - platform.example.com
+      secretName: platform-tls
+  rules:
+    - host: platform.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: platform-ingress-frontend
+  namespace: frontend
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - platform.example.com
+      secretName: platform-tls
+  rules:
+    - host: platform.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

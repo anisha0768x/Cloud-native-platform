@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traffic-prediction-service-config
+  namespace: ai
+data:
+  SERVICE_NAME: "traffic-prediction-service"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8006"
+  JWT_PUBLIC_KEY_PATH: "/run/secrets/jwt/public_key.pem"

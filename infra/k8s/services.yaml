@@ -1,0 +1,127 @@
+# Service registry: the single source of truth for K8s manifest
+# generation (see generate_manifests.py). WHY generate manifests from
+# this instead of hand-writing 13 near-identical Deployment/Service YAML
+# files: with 13 services following the same shape (one container, one
+# ClusterIP Service, env from a ConfigMap + a Secret, a liveness/readiness
+# probe on the same /health and /ready paths every service exposes via
+# platform_common), hand-copying invites drift — one service's probe path
+# gets fat-fingered, another's resource limits are forgotten. Generating
+# from one registry means every service is structurally consistent by
+# construction, and adding Module 15's service (if one ever exists) is a
+# 10-line registry entry, not a new YAML file to author from scratch.
+
+services:
+  - name: auth-service
+    namespace: auth
+    port: 8001
+    replicas: 2
+    needs_db: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: api-gateway
+    namespace: platform
+    port: 8000
+    replicas: 3
+    needs_redis: true
+    exposed_externally: true
+    hpa: { min_replicas: 3, max_replicas: 10, target_cpu_percent: 70 }
+    resources:
+      requests: { cpu: "150m", memory: "128Mi" }
+      limits: { cpu: "750m", memory: "256Mi" }
+
+  - name: monitoring-service
+    namespace: monitoring
+    port: 8002
+    replicas: 2
+    needs_db: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: metrics-service
+    namespace: data
+    port: 8003
+    replicas: 2
+    needs_db: true
+    needs_kafka: true
+    hpa: { min_replicas: 2, max_replicas: 8, target_cpu_percent: 75 }
+    resources:
+      requests: { cpu: "150m", memory: "256Mi" }
+      limits: { cpu: "1000m", memory: "512Mi" }
+
+  - name: k8s-management-service
+    namespace: platform
+    port: 8004
+    replicas: 2
+    needs_db: true
+    service_account: k8s-management-service  # IRSA-style: real cluster read/scale RBAC
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: dashboard-service
+    namespace: platform
+    port: 8005
+    replicas: 2
+    needs_redis: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: traffic-prediction-service
+    namespace: ai
+    port: 8006
+    replicas: 2
+    needs_db: true
+    resources:
+      requests: { cpu: "250m", memory: "512Mi" }  # LightGBM training is CPU/memory heavier
+      limits: { cpu: "1000m", memory: "1Gi" }
+
+  - name: predictive-maintenance-service
+    namespace: ai
+    port: 8007
+    replicas: 2
+    needs_db: true
+    resources:
+      requests: { cpu: "250m", memory: "512Mi" }
+      limits: { cpu: "1000m", memory: "1Gi" }
+
+  - name: genai-log-analysis-service
+    namespace: ai
+    port: 8008
+    replicas: 2
+    needs_db: true
+    needs_redis: true
+    needs_kafka: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: notification-service
+    namespace: platform
+    port: 8009
+    replicas: 2
+    needs_db: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: cloud-storage-service
+    namespace: platform
+    port: 8010
+    replicas: 2
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "500m", memory: "256Mi" }
+
+  - name: frontend
+    namespace: frontend
+    port: 80
+    replicas: 2
+    is_frontend: true
+    exposed_externally: true
+    resources:
+      requests: { cpu: "50m", memory: "64Mi" }
+      limits: { cpu: "250m", memory: "128Mi" }

@@ -1,0 +1,57 @@
+# Cloud Storage Service — local dev container. No database — points at
+# MinIO (already provisioned in infra/docker-compose.yml), which speaks
+# the S3 API, so the exact same S3StorageProvider code targets real AWS
+# S3 in production by simply changing S3_ENDPOINT_URL to unset/None.
+#
+# Run from repo root, layering all compose files (this is the LAST
+# service — completes all 12 backend services from the architecture doc):
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/dashboard-service/docker-compose.yml \
+#                   -f services/traffic-prediction-service/docker-compose.yml \
+#                   -f services/predictive-maintenance-service/docker-compose.yml \
+#                   -f services/genai-log-analysis-service/docker-compose.yml \
+#                   -f services/notification-service/docker-compose.yml \
+#                   -f services/cloud-storage-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  cloud-storage-service:
+    build:
+      context: ../..
+      dockerfile: services/cloud-storage-service/Dockerfile
+    container_name: platform-cloud-storage-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: cloud-storage-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8010"
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      S3_BUCKET: platform-storage
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: platform
+      S3_SECRET_KEY: platform_local_dev_only
+      S3_REGION: us-east-1
+      MAX_UPLOAD_SIZE_BYTES: "52428800"
+      PRESIGNED_URL_EXPIRY_SECONDS: "3600"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8010:8010"
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces.yaml
+  - ingress.yaml
+  - auth-service
+  - api-gateway
+  - monitoring-service
+  - metrics-service
+  - k8s-management-service
+  - dashboard-service
+  - traffic-prediction-service
+  - predictive-maintenance-service
+  - genai-log-analysis-service
+  - notification-service
+  - cloud-storage-service
+  - frontend

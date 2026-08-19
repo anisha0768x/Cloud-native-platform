@@ -1,0 +1,140 @@
+# Runs on every push/PR. WHY a matrix over one giant job: 12 backend
+# services + the shared library + the frontend are independent test
+# suites (see each service's own pytest suite from Modules 2-12) — a
+# matrix runs them in parallel (faster feedback) and, critically, a
+# failure in one service's tests doesn't block seeing results for the
+# other 12 in the same run.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-shared-lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install platform_common
+        working-directory: shared/libs/platform_common
+        run: pip install -e . --break-system-packages && pip install pytest pytest-asyncio httpx cryptography --break-system-packages
+      - name: Run tests
+        working-directory: shared/libs/platform_common
+        run: python -m pytest tests/ -v
+
+  test-services:
+    runs-on: ubuntu-latest
+    needs: test-shared-lib # every service depends on platform_common — no point testing services against a broken shared lib
+    strategy:
+      fail-fast: false # see every service's result, not just the first failure
+      matrix:
+        service:
+          - auth-service
+          - api-gateway
+          - monitoring-service
+          - metrics-service
+          - k8s-management-service
+          - dashboard-service
+          - traffic-prediction-service
+          - predictive-maintenance-service
+          - genai-log-analysis-service
+          - notification-service
+          - cloud-storage-service
+
+    services:
+      # Real Postgres + Redis for the test run — matching how every
+      # service's own test suite was built and verified locally (Modules
+      # 2-12 all run against real infra, not mocks, wherever the sandbox
+      # that built them could provide it).
+      postgres:
+        image: timescale/timescaledb:2.14.2-pg15
+        env:
+          POSTGRES_USER: platform
+          POSTGRES_PASSWORD: platform_ci_only
+          POSTGRES_DB: platform
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.2-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create service databases
+        run: |
+          sudo apt-get install -y postgresql-client
+          for db in auth_service auth_service_test monitoring_service monitoring_service_test \
+                    metrics_service metrics_service_test k8s_management_service k8s_management_service_test \
+                    traffic_prediction_service traffic_prediction_service_test \
+                    predictive_maintenance_service predictive_maintenance_service_test \
+                    genai_log_analysis_service genai_log_analysis_service_test \
+                    notification_service notification_service_test; do
+            PGPASSWORD=platform_ci_only psql -h localhost -U platform -d platform -c "CREATE DATABASE $db;" || true
+          done
+
+      - name: Install platform_common (editable)
+        run: pip install -e shared/libs/platform_common --break-system-packages
+
+      - name: Install service dependencies
+        working-directory: services/${{ matrix.service }}
+        run: pip install -r requirements-dev.txt --break-system-packages
+
+      - name: Run tests
+        working-directory: services/${{ matrix.service }}
+        env:
+          PYTHONPATH: .
+        run: python -m pytest tests/ -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Type-check
+        working-directory: frontend
+        run: npx tsc --noEmit
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  k8s-manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate manifests and fail if they differ from committed output
+        run: |
+          pip install pyyaml --break-system-packages
+          python3 infra/k8s/generate_manifests.py
+          git diff --exit-code infra/k8s/base infra/k8s/overlays || \
+            (echo "::error::Generated K8s manifests are out of date — run 'python3 infra/k8s/generate_manifests.py' and commit the result." && exit 1)
+      - name: yamllint
+        run: |
+          pip install yamllint --break-system-packages
+          yamllint -d "{extends: relaxed, rules: {line-length: disable, document-start: disable}}" infra/k8s/base infra/k8s/overlays

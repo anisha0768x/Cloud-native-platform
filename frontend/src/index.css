@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/*
+  Design tokens for the platform's dark "command console" theme.
+  Deliberately NOT the common AI-generated palette (warm cream + terracotta,
+  or near-black + single acid accent) — teal reads as "live/operational"
+  without being Anthropic's own interaction accent.
+*/
+@theme {
+  --color-bg: #0b0e14;
+  --color-surface: #131826;
+  --color-surface-hover: #1a2133;
+  --color-border: #1e2532;
+  --color-border-strong: #2a3344;
+
+  --color-text-primary: #e6e9f0;
+  --color-text-secondary: #8b93a7;
+  --color-text-muted: #5a6478;
+
+  --color-accent: #2dd4bf;
+  --color-accent-dim: #1a8f82;
+
+  --color-healthy: #34d399;
+  --color-degraded: #fbbf24;
+  --color-down: #f87171;
+  --color-unknown: #5a6478;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Signature element: a live pulse animation for the platform-health
+   indicator in the top bar — the one place motion is deliberately used,
+   per the "spend your boldness in one place" principle. */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(45, 212, 191, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0);
+  }
+}
+
+.pulse-live {
+  animation: pulse-ring 2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-live {
+    animation: none;
+  }
+}
+
+/* Visible keyboard focus everywhere, per accessibility floor. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

@@ -1,0 +1,53 @@
+# Predictive Maintenance Service — local dev container.
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/dashboard-service/docker-compose.yml \
+#                   -f services/traffic-prediction-service/docker-compose.yml \
+#                   -f services/predictive-maintenance-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  predictive-maintenance-service:
+    build:
+      context: ../..
+      dockerfile: services/predictive-maintenance-service/Dockerfile
+    container_name: platform-predictive-maintenance-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: predictive-maintenance-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8007"
+      DATABASE_URL: postgresql+asyncpg://platform:platform_local_dev_only@postgres:5432/predictive_maintenance_service
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      METRICS_SERVICE_URL: http://metrics-service:8003
+      K8S_MANAGEMENT_SERVICE_URL: http://k8s-management-service:8004
+      FEATURE_LOOKBACK_HOURS: "6"
+      TRAINING_SAMPLE_COUNT: "2000"
+      MODEL_CACHE_TTL_SECONDS: "3600"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      metrics-service:
+        condition: service_started
+      k8s-management-service:
+        condition: service_started
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

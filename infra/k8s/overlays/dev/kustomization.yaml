@@ -1,0 +1,59 @@
+# Dev overlay: single replica everywhere (fast iteration, low cost).
+# Assumes dev/staging/prod are SEPARATE clusters (a common pattern, and
+# what lets base/ keep its deliberate 6-namespace split — see
+# base/namespaces.yaml — without a kustomize `namespace:` transformer
+# collapsing all of them into one "dev" namespace).
+#
+# Generated from services.yaml by generate_manifests.py — the `images:`
+# list below must name every service exactly (kustomize's images
+# transformer does NOT support wildcard names), so it's generated here
+# rather than hand-maintained across 3 overlay files with drift risk.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+  # HPAs removed entirely in dev — a Deployment pinned to 1 replica above
+  # would otherwise fight an HPA still targeting minReplicas: 2/3.
+  - patch: |-
+      $patch: delete
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: placeholder
+    target:
+      kind: HorizontalPodAutoscaler
+
+images:
+  - name: auth-service
+    newTag: dev
+  - name: api-gateway
+    newTag: dev
+  - name: monitoring-service
+    newTag: dev
+  - name: metrics-service
+    newTag: dev
+  - name: k8s-management-service
+    newTag: dev
+  - name: dashboard-service
+    newTag: dev
+  - name: traffic-prediction-service
+    newTag: dev
+  - name: predictive-maintenance-service
+    newTag: dev
+  - name: genai-log-analysis-service
+    newTag: dev
+  - name: notification-service
+    newTag: dev
+  - name: cloud-storage-service
+    newTag: dev
+  - name: frontend
+    newTag: dev

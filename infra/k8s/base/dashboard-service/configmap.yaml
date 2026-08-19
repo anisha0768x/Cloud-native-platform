@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-service-config
+  namespace: platform
+data:
+  SERVICE_NAME: "dashboard-service"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8005"
+  REDIS_URL: "redis://redis:6379/0"
+  JWT_PUBLIC_KEY_PATH: "/run/secrets/jwt/public_key.pem"

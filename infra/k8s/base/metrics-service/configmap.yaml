@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-service-config
+  namespace: data
+data:
+  SERVICE_NAME: "metrics-service"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8003"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  JWT_PUBLIC_KEY_PATH: "/run/secrets/jwt/public_key.pem"

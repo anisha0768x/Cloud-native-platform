@@ -1,0 +1,37 @@
+# Prod overlay: base's replica counts/HPAs are already production-sized
+# (see services.yaml — that's WHY they're the base, not staging/dev-sized
+# with prod as the exception). Only the image tag changes here.
+#
+# Generated from services.yaml by generate_manifests.py — see dev
+# overlay's comment for why.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: auth-service
+    newTag: stable
+  - name: api-gateway
+    newTag: stable
+  - name: monitoring-service
+    newTag: stable
+  - name: metrics-service
+    newTag: stable
+  - name: k8s-management-service
+    newTag: stable
+  - name: dashboard-service
+    newTag: stable
+  - name: traffic-prediction-service
+    newTag: stable
+  - name: predictive-maintenance-service
+    newTag: stable
+  - name: genai-log-analysis-service
+    newTag: stable
+  - name: notification-service
+    newTag: stable
+  - name: cloud-storage-service
+    newTag: stable
+  - name: frontend
+    newTag: stable

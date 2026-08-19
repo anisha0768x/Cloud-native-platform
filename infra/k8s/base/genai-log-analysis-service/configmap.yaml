@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: genai-log-analysis-service-config
+  namespace: ai
+data:
+  SERVICE_NAME: "genai-log-analysis-service"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8008"
+  REDIS_URL: "redis://redis:6379/0"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  JWT_PUBLIC_KEY_PATH: "/run/secrets/jwt/public_key.pem"

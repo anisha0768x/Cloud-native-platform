@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-service-config
+  namespace: monitoring
+data:
+  SERVICE_NAME: "monitoring-service"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "8002"
+  JWT_PUBLIC_KEY_PATH: "/run/secrets/jwt/public_key.pem"

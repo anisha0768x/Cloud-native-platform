@@ -1,0 +1,7 @@
+-e ../../shared/libs/platform_common
+
+fastapi>=0.110
+uvicorn[standard]>=0.27
+alembic>=1.13
+asyncpg>=0.29
+aiokafka>=0.10

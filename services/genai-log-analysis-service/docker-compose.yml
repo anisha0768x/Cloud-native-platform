@@ -1,0 +1,70 @@
+# GenAI Log Analysis Service — local dev container.
+#
+# Defaults to LOG_STORE_MODE=memory (no OpenSearch required to start).
+# infra/docker-compose.yml already provisions OpenSearch — set
+# LOG_STORE_MODE=opensearch to actually use it.
+#
+# ANTHROPIC_API_KEY is read from the host environment (not hardcoded
+# here) — export it before running compose, or the service will run in
+# fallback-only mode (which is a supported, tested configuration, not
+# a broken one).
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/dashboard-service/docker-compose.yml \
+#                   -f services/traffic-prediction-service/docker-compose.yml \
+#                   -f services/predictive-maintenance-service/docker-compose.yml \
+#                   -f services/genai-log-analysis-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  genai-log-analysis-service:
+    build:
+      context: ../..
+      dockerfile: services/genai-log-analysis-service/Dockerfile
+    container_name: platform-genai-log-analysis-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: genai-log-analysis-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8008"
+      DATABASE_URL: postgresql+asyncpg://platform:platform_local_dev_only@postgres:5432/genai_log_analysis_service
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      REDIS_URL: redis://redis:6379/0
+      LOG_STORE_MODE: opensearch
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      METRICS_SERVICE_URL: http://metrics-service:8003
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: claude-sonnet-4-6
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOGS_TOPIC: logs.raw
+      KAFKA_CONSUMER_GROUP: genai-log-analysis-service
+      ENABLE_KAFKA_CONSUMER: "true"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      metrics-service:
+        condition: service_started
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

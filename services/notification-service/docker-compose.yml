@@ -1,0 +1,59 @@
+# Notification Service — local dev container.
+#
+# All three channels (webhook, Slack, email) are optional — set only the
+# ones you want active. WEBHOOK_URL/SLACK_WEBHOOK_URL/SMTP_* come from the
+# host environment so real secrets never live in this file.
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/dashboard-service/docker-compose.yml \
+#                   -f services/traffic-prediction-service/docker-compose.yml \
+#                   -f services/predictive-maintenance-service/docker-compose.yml \
+#                   -f services/genai-log-analysis-service/docker-compose.yml \
+#                   -f services/notification-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  notification-service:
+    build:
+      context: ../..
+      dockerfile: services/notification-service/Dockerfile
+    container_name: platform-notification-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: notification-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8009"
+      DATABASE_URL: postgresql+asyncpg://platform:platform_local_dev_only@postgres:5432/notification_service
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      SLACK_WEBHOOK_URL: ${NOTIFICATION_SLACK_WEBHOOK_URL:-}
+      SMTP_HOST: ${NOTIFICATION_SMTP_HOST:-}
+      SMTP_PORT: ${NOTIFICATION_SMTP_PORT:-25}
+      SMTP_FROM_ADDRESS: ${NOTIFICATION_SMTP_FROM:-alerts@platform.local}
+      SMTP_TO_ADDRESSES: ${NOTIFICATION_SMTP_TO:-[]}
+      ESCALATION_WINDOW_MINUTES: "15"
+      ESCALATION_WORKER_POLL_SECONDS: "60"
+      ENABLE_ESCALATION_WORKER: "true"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8009:8009"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

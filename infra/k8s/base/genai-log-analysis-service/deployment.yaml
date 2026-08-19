@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genai-log-analysis-service
+  namespace: ai
+  labels:
+    app: genai-log-analysis-service
+    part-of: cloud-native-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: genai-log-analysis-service
+  template:
+    metadata:
+      labels:
+        app: genai-log-analysis-service
+    spec:
+      containers:
+        - name: genai-log-analysis-service
+          image: genai-log-analysis-service:latest  # replaced by CI with the built image digest — see .github/workflows/deploy.yml
+          ports:
+            - containerPort: 8008
+          envFrom:
+            - configMapRef:
+                name: genai-log-analysis-service-config
+            - secretRef:
+                name: genai-log-analysis-service-secrets
+          env:
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://platform:$(DB_PASSWORD)@postgres:5432/genai_log_analysis_service"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8008
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

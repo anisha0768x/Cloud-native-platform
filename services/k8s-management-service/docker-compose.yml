@@ -1,0 +1,52 @@
+# Kubernetes Management Service — local dev container.
+#
+# Defaults to CLUSTER_MODE=demo (no real cluster required). To point this
+# at a REAL cluster instead, set CLUSTER_MODE=kubernetes and mount a
+# kubeconfig (or, if this container itself runs inside a K8s cluster with
+# an appropriate ServiceAccount/RBAC role, it picks up in-cluster config
+# automatically with no extra configuration).
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+
+version: "3.9"
+
+services:
+  k8s-management-service:
+    build:
+      context: ../..
+      dockerfile: services/k8s-management-service/Dockerfile
+    container_name: platform-k8s-management-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: k8s-management-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8004"
+      DATABASE_URL: postgresql+asyncpg://platform:platform_local_dev_only@postgres:5432/k8s_management_service
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      CLUSTER_MODE: demo
+      SNAPSHOT_INTERVAL_SECONDS: "30"
+      ENABLE_SNAPSHOT_WORKER: "true"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+      # Uncomment to point at a real cluster instead of demo mode:
+      # - ~/.kube/config:/home/appuser/.kube/config:ro
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

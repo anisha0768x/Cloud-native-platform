@@ -1,0 +1,53 @@
+# Metrics Service — local dev container.
+#
+# Run from repo root, layering all compose files:
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   up -d --build
+#
+# Note: infra/docker-compose.yml's `postgres` service uses the
+# `timescale/timescaledb` image, so THIS is the environment where the
+# hypertable conversion in the migration actually activates (see
+# alembic/versions/..._initial_schema_metrics.py) — unlike the plain
+# Postgres this service was developed/tested against locally.
+
+version: "3.9"
+
+services:
+  metrics-service:
+    build:
+      context: ../..
+      dockerfile: services/metrics-service/Dockerfile
+    container_name: platform-metrics-service
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: metrics-service
+      ENVIRONMENT: local
+      LOG_LEVEL: INFO
+      PORT: "8003"
+      DATABASE_URL: postgresql+asyncpg://platform:platform_local_dev_only@postgres:5432/metrics_service
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/public_key.pem
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      METRICS_TOPIC: metrics.raw
+      KAFKA_CONSUMER_GROUP: metrics-service
+      ENABLE_KAFKA_CONSUMER: "true"
+      MAX_QUERY_RANGE_DAYS: "90"
+    volumes:
+      - ../auth-service/keys:/run/secrets/jwt:ro
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

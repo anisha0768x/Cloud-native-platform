@@ -1,0 +1,45 @@
+# Frontend — local dev container (production build served via nginx).
+#
+# Run from repo root, layering all compose files (the complete stack —
+# every backend service plus this):
+#   docker compose -f infra/docker-compose.yml \
+#                   -f services/auth-service/docker-compose.yml \
+#                   -f services/monitoring-service/docker-compose.yml \
+#                   -f services/metrics-service/docker-compose.yml \
+#                   -f services/k8s-management-service/docker-compose.yml \
+#                   -f services/dashboard-service/docker-compose.yml \
+#                   -f services/traffic-prediction-service/docker-compose.yml \
+#                   -f services/predictive-maintenance-service/docker-compose.yml \
+#                   -f services/genai-log-analysis-service/docker-compose.yml \
+#                   -f services/notification-service/docker-compose.yml \
+#                   -f services/cloud-storage-service/docker-compose.yml \
+#                   -f services/api-gateway/docker-compose.yml \
+#                   -f frontend/docker-compose.yml \
+#                   up -d --build
+#
+# For active frontend DEVELOPMENT (hot reload), don't use this compose
+# file — just run `npm run dev` from frontend/ directly against a gateway
+# already running via the backend compose stack above.
+
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    container_name: platform-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - default
+
+networks:
+  default:
+    name: platform-network
+    external: true

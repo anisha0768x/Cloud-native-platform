@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: frontend
+data:
+  SERVICE_NAME: "frontend"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PORT: "80"

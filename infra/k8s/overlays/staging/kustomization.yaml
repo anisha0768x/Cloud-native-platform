@@ -1,0 +1,38 @@
+# Staging overlay: production-shaped (base's own replica counts/HPAs
+# apply unchanged), but a distinct image tag so staging never accidentally
+# runs an untagged/`latest` image that hasn't passed the staging
+# promotion gate (see .github/workflows/deploy.yml).
+#
+# Generated from services.yaml by generate_manifests.py — see dev
+# overlay's comment for why.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: auth-service
+    newTag: staging
+  - name: api-gateway
+    newTag: staging
+  - name: monitoring-service
+    newTag: staging
+  - name: metrics-service
+    newTag: staging
+  - name: k8s-management-service
+    newTag: staging
+  - name: dashboard-service
+    newTag: staging
+  - name: traffic-prediction-service
+    newTag: staging
+  - name: predictive-maintenance-service
+    newTag: staging
+  - name: genai-log-analysis-service
+    newTag: staging
+  - name: notification-service
+    newTag: staging
+  - name: cloud-storage-service
+    newTag: staging
+  - name: frontend
+    newTag: staging
