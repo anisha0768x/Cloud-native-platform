@@ -875,4 +875,5 @@ with every honest limitation (no live Kafka broker, no real K8s cluster,
 no Anthropic API key, no `terraform`/`kubectl` binaries) documented
 rather than glossed over, and a graceful fallback built for each one.
 #   c l o u d - n a t i v e - p l a t f o r m  
+ #   C l o u d - n a t i v e - p l a t f o r m  
  
