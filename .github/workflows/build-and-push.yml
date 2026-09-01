@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository }}
+  IMAGE_PREFIX: anisha0768x/cloud-native-platform
 
 jobs:
   build-and-push:
