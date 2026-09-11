@@ -1,0 +1,9 @@
+services:
+  helio:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - helio-data:/app/data
+volumes:
+  helio-data:

@@ -1,0 +1,31 @@
+services:
+  monitoring-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: monitoring-service}}
+    ports: ["8002:8000"]
+  metrics-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: metrics-service}}
+    ports: ["8003:8000"]
+  traffic-prediction-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: traffic-prediction-service}}
+    ports: ["8006:8000"]
+  predictive-maintenance-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: predictive-maintenance-service}}
+    ports: ["8007:8000"]
+  genai-log-analysis-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: genai-log-analysis-service}}
+    ports: ["8008:8000"]
+  notification-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: notification-service}}
+    ports: ["8009:8000"]
+  dashboard-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: dashboard-service}}
+    ports: ["8010:8000"]
+  k8s-management-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: k8s-management-service}}
+    ports: ["8004:8000"]
+  cloud-storage-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: cloud-storage-service}}
+    ports: ["8011:8000"]
+  cloud-sql-service:
+    build: {context: .., dockerfile: services/Dockerfile.service, args: {SERVICE_DIR: cloud-sql-service}}
+    ports: ["8012:8000"]

@@ -1,0 +1,4 @@
+data/
+.deps/
+__pycache__/
+*.pyc

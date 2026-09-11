@@ -1,0 +1,17 @@
+name: platform-ci
+on: [push, pull_request]
+jobs:
+  python-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install fastapi 'uvicorn[standard]' pydantic
+      - run: python -m py_compile run_local.py services/_runtime/factory.py
+      - run: find services -path '*/app/main.py' -print0 | xargs -0 -n1 python -m py_compile
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f infra/docker-compose.yml -f infra/services.compose.yml config --quiet

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "metrics.raw",
+  "type": "object",
+  "required": ["event_id", "occurred_at", "service_id", "metric_name", "value"],
+  "properties": {
+    "event_id": {"type": "string", "format": "uuid"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "service_id": {"type": "string", "format": "uuid"},
+    "metric_name": {"type": "string"},
+    "value": {"type": "number"},
+    "labels": {"type": "object", "additionalProperties": {"type": "string"}}
+  }
+}
